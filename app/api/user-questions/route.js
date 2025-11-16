@@ -47,7 +47,7 @@ export async function POST(request) {
       return NextResponse.json({ message: "Invalid session" }, { status: 401 });
     }
 
-    // Get total count of distinct questions
+    // Get total count of questions
     const { count: totalCount, error: countError } = await supabase
       .from("questions")
       .select("*", { count: "exact", head: true })

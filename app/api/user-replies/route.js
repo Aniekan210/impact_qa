@@ -47,21 +47,17 @@ export async function POST(request) {
       return NextResponse.json({ message: "Invalid session" }, { status: 401 });
     }
 
-    // Step 1: Get total count of distinct parent_question_ids from user's replies
-    const {
-      data: distinctReplies,
-      error: distinctError,
-      count: totalCount,
-    } = await supabase
+    // Get distinct parent_question_ids from user's replies
+    const { data: distinctReplies, error: distinctError } = await supabase
       .from("replies")
-      .select("parent_question_id", { count: "exact" })
+      .select("parent_question_id")
       .eq("created_by_id", userId)
       .not("parent_question_id", "is", null);
 
     if (distinctError) {
-      console.error("Distinct replies count error:", distinctError);
+      console.error("Distinct replies error:", distinctError);
       return NextResponse.json(
-        { message: "Failed to count user replies" },
+        { message: "Failed to fetch user replies" },
         { status: 500 }
       );
     }
@@ -80,13 +76,15 @@ export async function POST(request) {
       ...new Set(distinctReplies.map((reply) => reply.parent_question_id)),
     ];
 
+    const totalCount = uniqueQuestionIds.length;
+
     // Get paginated subset of unique question IDs
     const paginatedQuestionIds = uniqueQuestionIds.slice(
       offset,
       offset + limit
     );
 
-    // Step 2: Fetch the questions for the paginated IDs with reply counts
+    // Fetch the questions for the paginated IDs
     const { data: questions, error: questionsError } = await supabase
       .from("questions")
       .select(
@@ -113,12 +111,12 @@ export async function POST(request) {
         reply_count: question.replies?.[0]?.count || 0,
       })) || [];
 
-    const hasMore = offset + limit < uniqueQuestionIds.length;
+    const hasMore = offset + limit < totalCount;
 
     return NextResponse.json({
       questions: formattedQuestions,
       hasMore,
-      total: uniqueQuestionIds.length,
+      total: totalCount,
     });
   } catch (error) {
     console.error("User replies error:", error);

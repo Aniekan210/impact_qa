@@ -30,6 +30,7 @@ import {
   Reply,
   Plus,
   X,
+  RefreshCw,
 } from "lucide-react";
 import QuestionCard from "@/components/ui/question-card";
 
@@ -54,17 +55,17 @@ export default function Dashboard() {
   const [keywords, setKeywords] = useState([]);
   const [questionsTotal, setQuestionsTotal] = useState(0);
   const [repliesTotal, setRepliesTotal] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const router = useRouter();
 
   const pageSizeOptions = [4, 6, 10, 14, 20];
 
+  // Fetch both questions and replies on component mount
   useEffect(() => {
-    if (activeTab === "questions") {
-      fetchUserQuestions(1, true);
-    } else if (activeTab === "replies") {
-      fetchUserReplies(1, true);
-    }
-  }, [activeTab]);
+    fetchUserQuestions(1, true);
+    fetchUserReplies(1, true);
+  }, []);
 
   // Reset pagination when page size changes
   useEffect(() => {
@@ -73,7 +74,7 @@ export default function Dashboard() {
     } else if (activeTab === "replies") {
       fetchUserReplies(1, true);
     }
-  }, [pageSize]);
+  }, [pageSize, activeTab]);
 
   const getToken = () => {
     return localStorage.getItem("token");
@@ -171,6 +172,16 @@ export default function Dashboard() {
     }
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    if (activeTab === "questions") {
+      await fetchUserQuestions(1, true);
+    } else {
+      await fetchUserReplies(1, true);
+    }
+    setIsRefreshing(false);
+  };
+
   const handleCreateQuestion = async (e) => {
     e.preventDefault();
     const token = getToken();
@@ -242,7 +253,6 @@ export default function Dashboard() {
 
   const handlePageSizeChange = (newSize) => {
     setPageSize(newSize);
-    // The useEffect will automatically trigger the reset
   };
 
   const StatsCard = ({ icon: Icon, title, value, description, total }) => (
@@ -342,25 +352,43 @@ export default function Dashboard() {
               Your Content
             </CardTitle>
 
-            {/* Page Size Selector */}
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-[#6B6B6B]">Show:</span>
-              <Select
-                value={pageSize.toString()}
-                onValueChange={(value) => handlePageSizeChange(parseInt(value))}
+            <div className="flex items-center gap-4">
+              {/* Refresh Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-2"
               >
-                <SelectTrigger className="w-20 h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {pageSizeOptions.map((size) => (
-                    <SelectItem key={size} value={size.toString()}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <span className="text-sm text-[#6B6B6B]">per page</span>
+                <RefreshCw
+                  className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                />
+                Refresh
+              </Button>
+
+              {/* Page Size Selector */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-[#6B6B6B]">Show:</span>
+                <Select
+                  value={pageSize.toString()}
+                  onValueChange={(value) =>
+                    handlePageSizeChange(parseInt(value))
+                  }
+                >
+                  <SelectTrigger className="w-20 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pageSizeOptions.map((size) => (
+                      <SelectItem key={size} value={size.toString()}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-[#6B6B6B]">per page</span>
+              </div>
             </div>
           </div>
         </CardHeader>
